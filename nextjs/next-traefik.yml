@@ -1,0 +1,33 @@
+
+version: '3'
+
+services:
+  nextjs:
+
+    image: edfrancys/nextjsk3s:latest
+
+    deploy:
+      mode: replicated
+      #placement:
+      #  constraints:
+      #    - node.role == manager
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      labels:
+        # App-labbels
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy-traefik"
+        - "traefik.http.routers.nextjs.rule=Host(`nextjs.vejartes.com.br`)"
+        - "traefik.http.routers.nextjs.service=nextjs"
+        - "traefik.http.routers.nextjs.tls.certresolver=default"
+        - "traefik.http.routers.nextjs.entrypoints=websecure"
+        - "traefik.http.services.nextjs.loadbalancer.server.port=3000"
+
+
+    networks:
+      - proxy-traefik
+
+networks:
+  proxy-traefik:
+    external: true

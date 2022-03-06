@@ -1,0 +1,53 @@
+version: "3.7"
+
+services:
+  wordpress:
+    images: wordpress:latest
+    volumes:
+      - ./data/cvdigital:/var/www/html/wp-content
+    secrets:
+      - wordpress_db_host
+      - wordpress_db_user
+      - wordpress_db_name
+      - mysql_db_password
+    enviromment:
+      - WORDPRESS_DB_HOST_FILE=/run/secrets/wordpress_db_host
+      - WORDPRESS_DB_USER_FILE=/run/secrets/wordpress_db_user
+      - WORDPRESS_DB_NAME_FILE=/run/secrets/wordpress_db_name
+      - WORDPRESS_DB_PASSWORD_FILE=/run/secrets/mysql_db_password
+    network:
+      - proxy-traefik
+    deploy:
+      mode: replicated
+      #placement:
+      #  constraints:
+      #    - node.role == manager
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      labels:
+        # App-labbels
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy-traefik"
+        - "traefik.http.routers.wordpress.rule=Host(`wp.joinexsql.ml`)"
+        - "traefik.http.routers.wordpress.service=wordpress"
+        - "traefik.http.routers.wordpress.tls.certresolver=default"
+        - "traefik.http.routers.wordpress.entrypoints=web,websecure"
+        - "traefik.http.services.wordpress.loadbalancer.server.port=3000"
+
+secrets:
+  wordpress_db_host:
+    file: ./wordpress_db_host.txt
+  wordpress_db_user:
+    file: ./wordpress_db_user.txt
+  wordpress_db_name:
+    file: ./wordpress_db_name.txt
+  mysql_db_password:
+    file: ./mysql_db_password.txt
+
+networks:
+  proxy-traefik:
+    external: true

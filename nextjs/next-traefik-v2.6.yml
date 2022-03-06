@@ -1,0 +1,43 @@
+
+version: '3'
+
+services:
+  nextjs:
+
+    image: edfrancys/nextjsk3s:latest
+
+    deploy:
+      placement:
+        constraints:         
+          - node.role == manager          
+      mode: replicated      
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true        
+        - traefik.docker.network=traefik-public        
+        - traefik.constraint-label=traefik-public       
+        
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
+        
+        - traefik.http.routers.traefik-public-http.rule=Host(`joinexsql.ml`)
+        - traefik.http.routers.traefik-public-http.entrypoints=http
+        - traefik.http.routers.traefik-public-http.middlewares=https-redirect
+        
+        - traefik.http.routers.traefik-public-https.rule=Host(`joinexsql.ml`)
+        - traefik.http.routers.traefik-public-https.entrypoints=https
+        - traefik.http.routers.traefik-public-https.tls=true        
+        
+        - traefik.http.routers.traefik-public-https.service=nextjs        
+        - traefik.http.routers.traefik-public-https.tls.certresolver=le              
+       
+        - traefik.http.services.traefik-public.loadbalancer.server.port=3000
+
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

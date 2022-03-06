@@ -1,0 +1,64 @@
+#https://tuneit.me/pt/docker/traefik-cloud-native-edge-router-for-container-services/
+version: "3.7"
+
+services:
+  traefik:
+    image: traefik:v2.0
+    command:
+      - --api=true
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.swarmMode=true
+      - --providers.docker.network=http
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.default.acme.email=contato@vejartes.com.br
+      - --certificatesresolvers.default.acme.storage=/certificates/acme.json
+      - --certificatesresolvers.default.acme.tlschallenge=true
+      - --accesslog     
+      - --log      
+      #- --api
+    ports:
+      - 80:80
+      - 443:443
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      labels:
+        # Dashboard
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy-traefik"
+        - "traefik.http.routers.traefik.rule=Host(`traefik.joinexsql.ml`)"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.tls.certresolver=default"
+        - "traefik.http.routers.traefik.entrypoints=web,websecure"
+        - "traefik.http.routers.traefik.middlewares=authtraefik"
+        - "traefik.http.middlewares.authtraefik.basicauth.users=admin:${HASHED_PASSWORD?Variable not set}"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+        # global redirect to https
+        - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+        - "traefik.http.routers.http-catchall.entrypoints=web"
+        - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+        
+        # middleware redirect
+        - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certificates/acme.json:/certificates/acme.json
+    networks:
+      - proxy-traefik
+
+networks:
+  proxy-traefik:
+    external: true
+

@@ -1,0 +1,37 @@
+version: '3.1'
+
+services:
+ 
+  adminer:
+    image: adminer
+    #restart: always
+    #ports:
+    #  - 8080:8080
+    
+    deploy:
+      placement:
+        constraints:
+          #- node.role == manager
+          replicas-max-per-node: 1
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      labels:
+        # App-labbels
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy-traefik"
+        - "traefik.http.routers.adminer.rule=Host(`adminermysql.vejartes.com.br`)"
+        - "traefik.http.routers.adminer.service=adminer"
+        - "traefik.http.routers.adminer.tls.certresolver=default"
+        - "traefik.http.routers.adminer.entrypoints=websecure"
+        - "traefik.http.services.adminer.loadbalancer.server.port=3000"
+    networks:
+      - proxy-traefik
+      - db-backend
+
+networks:
+  proxy-traefik:
+    external: true
+  db-backend:
+    external: true
+    
